@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NMAT Physics Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e10;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0eff4;
+    --muted: #8a8a99;
+    --accent: #b8f0a0;
+    --accent-dim: rgba(184,240,160,0.12);
+    --accent-border: rgba(184,240,160,0.35);
+    --red: #ff7070;
+    --red-dim: rgba(255,112,112,0.12);
+    --red-border: rgba(255,112,112,0.35);
+    --yellow: #ffd166;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .app { width: 100%; max-width: 660px; }
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  /* SETUP */
+  .setup-header { margin-bottom: 2.5rem; }
+  .setup-header h1 { font-size: 1.6rem; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 0.3rem; }
+  .setup-header p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+  .section-label { font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.75rem; }
+  .setup-block { margin-bottom: 2rem; }
+  .timer-row { display: flex; align-items: center; gap: 1rem; }
+  .timer-row input[type=range] { flex:1; -webkit-appearance:none; height:3px; background:var(--border2); border-radius:2px; outline:none; }
+  .timer-row input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); cursor:pointer; }
+  .timer-val { font-family:'DM Mono',monospace; font-size:1rem; color:var(--accent); min-width:48px; text-align:right; }
+  .q-count-info { font-size:0.85rem; color:var(--muted); margin-bottom:1rem; }
+  .btn-primary { display:block; width:100%; padding:0.9rem; background:var(--accent); color:#0e0e10; border:none; border-radius:var(--radius); font-family:'DM Sans',sans-serif; font-size:0.95rem; font-weight:500; cursor:pointer; transition:opacity 0.2s, transform 0.1s; letter-spacing:-0.01em; margin-top:1.5rem; }
+  .btn-primary:hover { opacity:0.9; }
+  .btn-primary:active { transform:scale(0.99); }
+
+  /* QUIZ */
+  .quiz-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; }
+  .q-meta { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--muted); }
+  .timer-display { font-family:'DM Mono',monospace; font-size:0.9rem; font-weight:500; padding:5px 14px; border-radius:99px; border:1px solid var(--border2); background:var(--surface); color:var(--text); transition:all 0.3s; }
+  .timer-display.urgent { border-color:var(--red-border); background:var(--red-dim); color:var(--red); }
+  .progress-track { height:2px; background:var(--border); border-radius:2px; margin-bottom:1.5rem; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 1s linear; }
+  .q-card { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:1.4rem 1.5rem; margin-bottom:1rem; font-size:0.95rem; line-height:1.75; }
+  .choices { display:flex; flex-direction:column; gap:8px; margin-bottom:1rem; }
+  .choice { text-align:left; padding:0.75rem 1.1rem; font-family:'DM Sans',sans-serif; font-size:0.88rem; line-height:1.5; border-radius:var(--radius-sm); border:1px solid var(--border2); background:var(--surface); color:var(--text); cursor:pointer; transition:background 0.15s, border-color 0.15s; }
+  .choice:hover:not(:disabled) { background:var(--surface2); border-color:var(--border2); }
+  .choice.correct { background:var(--accent-dim); border-color:var(--accent-border); color:var(--accent); }
+  .choice.wrong { background:var(--red-dim); border-color:var(--red-border); color:var(--red); }
+  .choice:disabled { cursor:default; }
+  .rat-box { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:1.2rem 1.4rem; font-size:0.87rem; line-height:1.8; color:#c8c8d8; display:none; margin-bottom:1rem; animation:fadeIn 0.25s ease; }
+  .rat-tag { font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:0.6rem; }
+  .rat-box strong { color:var(--text); font-weight:500; }
+  .nmat-tip { margin-top:0.85rem; padding-top:0.85rem; border-top:1px solid var(--border); font-size:0.82rem; color:var(--yellow); line-height:1.7; }
+  .nmat-tip-label { font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.3rem; opacity:0.8; }
+  .next-btn { width:100%; padding:0.8rem; background:transparent; border:1px solid var(--border2); border-radius:var(--radius-sm); color:var(--muted); font-family:'DM Sans',sans-serif; font-size:0.88rem; cursor:pointer; transition:all 0.2s; display:none; }
+  .next-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* RESULTS */
+  .results-header { text-align:center; margin-bottom:2.5rem; }
+  .score-big { font-family:'DM Mono',monospace; font-size:4rem; font-weight:500; color:var(--accent); line-height:1; margin-bottom:0.4rem; }
+  .score-label { font-size:0.9rem; color:var(--muted); }
+  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:2rem; }
+  .stat-card { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:0.9rem 1rem; text-align:center; }
+  .stat-num { font-family:'DM Mono',monospace; font-size:1.5rem; font-weight:500; }
+  .stat-num.green { color:var(--accent); }
+  .stat-num.red { color:var(--red); }
+  .stat-lbl { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+  .review-list { display:flex; flex-direction:column; gap:10px; margin-bottom:2rem; }
+  .review-item { background:var(--surface); border-radius:var(--radius-sm); border:1px solid var(--border); padding:0.9rem 1.1rem; font-size:0.85rem; line-height:1.6; }
+  .review-item.correct-item { border-left:3px solid var(--accent); }
+  .review-item.wrong-item { border-left:3px solid var(--red); }
+  .review-q { color:var(--text); margin-bottom:0.3rem; }
+  .review-ans { font-size:0.8rem; color:var(--muted); }
+  .review-ans .right { color:var(--accent); }
+  .review-ans .bad { color:var(--red); }
+  .section-review-label { font-family:'DM Mono',monospace; font-size:0.7rem; letter-spacing:0.1em; color:var(--muted); text-transform:uppercase; margin-bottom:0.75rem; }
+  .restart-btn { display:block; width:100%; padding:0.9rem; background:transparent; border:1px solid var(--accent-border); border-radius:var(--radius); color:var(--accent); font-family:'DM Sans',sans-serif; font-size:0.95rem; font-weight:500; cursor:pointer; transition:background 0.2s; }
+  .restart-btn:hover { background:var(--accent-dim); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SETUP -->
+  <div class="screen active" id="screenSetup">
+    <div class="setup-header">
+      <h1>NMAT Physics Quiz</h1>
+      <p>10 questions · Dimensional analysis, nuclear decay, waves, electricity, thermodynamics, and more.</p>
+    </div>
+    <div class="setup-block">
+      <div class="section-label">Seconds per question</div>
+      <div class="timer-row">
+        <input type="range" id="timerSlider" min="10" max="120" step="5" value="45" oninput="document.getElementById('timerVal').textContent=this.value+'s'">
+        <span class="timer-val" id="timerVal">45s</span>
+      </div>
+    </div>
+    <div class="q-count-info">10 questions loaded and ready.</div>
+    <button class="btn-primary" onclick="startQuiz()">Start Quiz</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="screenQuiz">
+    <div class="quiz-top">
+      <span class="q-meta" id="qMeta">Question 1 of 10</span>
+      <span class="timer-display" id="timerDisplay">0:45</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="q-card" id="qCard"></div>
+    <div class="choices" id="choicesEl"></div>
+    <div class="rat-box" id="ratBox"></div>
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Next question →</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screenResults">
+    <div class="results-header">
+      <div class="score-big" id="scoreBig"></div>
+      <div class="score-label" id="scoreLabel"></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num green" id="statCorrect"></div><div class="stat-lbl">Correct</div></div>
+      <div class="stat-card"><div class="stat-num red" id="statWrong"></div><div class="stat-lbl">Wrong / Missed</div></div>
+      <div class="stat-card"><div class="stat-num" id="statTime"></div><div class="stat-lbl">Avg time</div></div>
+    </div>
+    <div class="section-review-label">Review</div>
+    <div class="review-list" id="reviewList"></div>
+    <button class="restart-btn" onclick="goSetup()">Try again →</button>
+  </div>
+
+</div>
+
+<script>
+const QUESTIONS = [
+  {
+    question: "Given that M, L, and T be the dimensions for mass, length, and time, respectively, which of the following is the dimensional analysis for force?",
+    choices: ["ML/T", "ML/T²", "ML²/T", "ML²/T²"],
+    answer: 1,
+    rat: "Force = mass × acceleration. Acceleration has dimensions L/T². Therefore, Force = M × L/T² = <strong>ML/T²</strong>. This matches Newton's Second Law: F = ma.",
+    tip: "Memorize the base dimensional formulas: Force = MLT⁻², Energy = ML²T⁻², Pressure = ML⁻¹T⁻², Power = ML²T⁻³. Derive the rest from F = ma."
+  },
+  {
+    question: "²³⁸₉₀Th → ²³⁴₈₈Ra + ?&nbsp;&nbsp; What is the missing product in the nuclear decay process expressed above?",
+    choices: ["Positron", "Gamma ray", "Beta particle", "Alpha particle"],
+    answer: 3,
+    rat: "In the decay, mass number drops from 238 to 234 (−4) and atomic number drops from 90 to 88 (−2). A particle with mass number 4 and atomic number 2 is an <strong>alpha particle (⁴₂He)</strong>. Alpha decay always results in −4 mass and −2 atomic number.",
+    tip: "Nuclear decay shortcuts: Alpha (α) → −4 mass, −2 atomic number. Beta (β⁻) → 0 mass, +1 atomic number. Positron (β⁺) → 0 mass, −1 atomic number. Gamma (γ) → no change in either."
+  },
+  {
+    question: "A hydrogen atom is said to be in the ground state when the electron is ______.",
+    choices: ["At rest", "Inside the nucleus", "In its lowest energy level", "Removed from the atom"],
+    answer: 2,
+    rat: "The ground state is the <strong>lowest possible energy state</strong> of an electron in an atom (n = 1 for hydrogen). It does not mean the electron is at rest — electrons always have kinetic energy. 'Removed from the atom' describes ionization, and electrons never reside inside the nucleus.",
+    tip: "Ground state = n = 1 = lowest energy level. Excited state = n > 1. Ionization = electron completely removed (n = ∞). These are common NMAT quantum mechanics distinctions."
+  },
+  {
+    question: "Which of the following represents the scalar quantity?",
+    choices: [
+      "A rice weighs 7.50 kilograms.",
+      "A car moves at 5.60 m/s northward.",
+      "A crane lifts the brick 200 N upward.",
+      "A treehouse is located at 120 kilometers, 60° southwest."
+    ],
+    answer: 0,
+    rat: "<strong>Scalars</strong> have magnitude only — no direction. Mass (7.50 kg) is a scalar. The other options all include direction: 'northward,' 'upward,' and '60° southwest' — these are vectors (velocity, force, and displacement respectively).",
+    tip: "Scalar = magnitude only (mass, speed, temperature, time, energy). Vector = magnitude + direction (velocity, force, displacement, acceleration). The presence of a directional word is your instant giveaway."
+  },
+  {
+    question: "A 10-ohm resistor and a 40-ohm resistor are connected in parallel. The equivalent resistance of the combination is ______.",
+    choices: ["0.125 Ω", "8 Ω", "20 Ω", "50 Ω"],
+    answer: 1,
+    rat: "For parallel resistors: 1/R = 1/R₁ + 1/R₂ = 1/10 + 1/40 = 4/40 + 1/40 = 5/40. Therefore R = 40/5 = <strong>8 Ω</strong>. Note: equivalent resistance in parallel is always less than the smallest resistor (10 Ω here), so 20 Ω and 50 Ω are immediately eliminated.",
+    tip: "For two resistors in parallel, use the product-over-sum shortcut: R = (R₁ × R₂)/(R₁ + R₂) = (10 × 40)/(10 + 40) = 400/50 = 8 Ω. Much faster for two-resistor problems."
+  },
+  {
+    question: "An ideal gas occupies a volume of 36 cm³ at a temperature of 200 K. If the temperature is raised to 300 K at a constant pressure, what will be the volume of the gas?",
+    choices: ["136 cm³", "72 cm³", "54 cm³", "26 cm³"],
+    answer: 2,
+    rat: "At constant pressure, Charles's Law applies: V₁/T₁ = V₂/T₂. So V₂ = V₁ × T₂/T₁ = 36 × (300/200) = 36 × 1.5 = <strong>54 cm³</strong>. Volume increases proportionally with absolute temperature.",
+    tip: "Charles's Law = constant pressure, volume and temperature are directly proportional. Boyle's Law = constant temperature, pressure and volume are inversely proportional. Gay-Lussac's = constant volume, pressure and temperature are directly proportional."
+  },
+  {
+    question: "What is the weight of air inside a closed room with dimensions of 6 meters long, 4 meters wide, and 3 meters high if the density of air is 1.29 grams per liter?",
+    choices: ["95.0 kg", "92.9 kg", "90.0 kg", "82.9 kg"],
+    answer: 1,
+    rat: "Volume = 6 × 4 × 3 = 72 m³. Convert: 72 m³ = 72,000 liters. Mass = density × volume = 1.29 g/L × 72,000 L = 92,880 g = <strong>92.9 kg</strong>. The key step is unit conversion: 1 m³ = 1,000 liters.",
+    tip: "Unit conversion trap: 1 m³ = 1,000 L (not 100). Always convert m³ to liters before multiplying by g/L density. This is the most common error in this type of problem."
+  },
+  {
+    question: "What is the wavelength of a wave if it has a speed of 18 meters per second and a frequency of 2.5 Hertz?",
+    choices: ["0.14 m", "7.20 m", "22.5 m", "45.0 m"],
+    answer: 1,
+    rat: "Using the wave equation: v = fλ, so λ = v/f = 18/2.5 = <strong>7.20 m</strong>. Speed (m/s) ÷ frequency (Hz) = wavelength (m).",
+    tip: "The wave equation v = fλ is essential. Rearrange as needed: λ = v/f, f = v/λ. Units check: m/s ÷ Hz (1/s) = meters. Always sanity-check your units."
+  },
+  {
+    question: "Which of the following best describes light?",
+    choices: ["A light bulb.", "A telescope.", "It is a particle.", "It is both a wave and a particle."],
+    answer: 3,
+    rat: "Light exhibits <strong>wave-particle duality</strong> — it behaves as a wave (diffraction, interference) and as a particle (photoelectric effect, photons). This is the cornerstone of quantum mechanics established by Einstein and de Broglie. Options A and B describe devices, not light itself. Option C is incomplete.",
+    tip: "Wave-particle duality applies to all quantum objects, but light is the classic example. The photoelectric effect (particle behavior) and double-slit experiment (wave behavior) are the go-to NMAT evidence for this concept."
+  },
+  {
+    question: "A teacher is demonstrating different types of waves. He attached small papers to the spring. If the teacher created a wave where the particles of a spring are vibrating at right angles to the direction of energy, what type of wave did he produce?",
+    choices: ["Sound wave", "Standing wave", "Transverse wave", "Longitudinal wave"],
+    answer: 2,
+    rat: "When particles vibrate <strong>perpendicular (at right angles)</strong> to the direction of energy propagation, the wave is a <strong>transverse wave</strong>. Longitudinal waves have particles vibrating parallel to energy direction (e.g., sound). Standing waves are a result of interference, not a particle-motion type.",
+    tip: "Transverse = perpendicular motion (light, water waves, seismic S-waves). Longitudinal = parallel motion (sound, seismic P-waves). The keyword 'right angles' in the question is the direct clue for transverse."
+  }
+];
+
+let current = 0;
+let ticker = null;
+let seconds = 45;
+let totalSeconds = 45;
+let results = [];
+let timeTaken = [];
+let answered = false;
+let startTime = 0;
+
+function startQuiz() {
+  totalSeconds = parseInt(document.getElementById('timerSlider').value);
+  results = [];
+  timeTaken = [];
+  current = 0;
+  show('screenQuiz');
+  loadQuestion();
+}
+
+function loadQuestion() {
+  answered = false;
+  seconds = totalSeconds;
+  const q = QUESTIONS[current];
+  document.getElementById('qMeta').textContent = `Question ${current+1} of ${QUESTIONS.length}`;
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('timerDisplay').textContent = fmt(seconds);
+  document.getElementById('timerDisplay').classList.remove('urgent');
+  document.getElementById('qCard').innerHTML = q.question;
+
+  const letters = ['a','b','c','d'];
+  const choicesEl = document.getElementById('choicesEl');
+  choicesEl.innerHTML = '';
+  q.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.innerHTML = `${letters[i]}) ${c}`;
+    btn.onclick = () => answer(i, btn);
+    choicesEl.appendChild(btn);
+  });
+
+  document.getElementById('ratBox').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'none';
+
+  clearInterval(ticker);
+  startTime = Date.now();
+  ticker = setInterval(() => {
+    seconds--;
+    document.getElementById('progressFill').style.width = (seconds/totalSeconds*100)+'%';
+    document.getElementById('timerDisplay').textContent = fmt(seconds);
+    if (seconds <= 10) document.getElementById('timerDisplay').classList.add('urgent');
+    if (seconds <= 0) {
+      clearInterval(ticker);
+      timeTaken.push(totalSeconds);
+      reveal(null);
+    }
+  }, 1000);
+}
+
+function answer(idx, btn) {
+  if (answered) return;
+  answered = true;
+  clearInterval(ticker);
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  timeTaken.push(Math.min(elapsed, totalSeconds));
+  reveal(idx);
+}
+
+function reveal(chosen) {
+  answered = true;
+  const q = QUESTIONS[current];
+  const letters = ['a','b','c','d'];
+  const btns = document.querySelectorAll('.choice');
+  btns.forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.answer) b.classList.add('correct');
+    else if (i === chosen) b.classList.add('wrong');
+  });
+
+  const isCorrect = chosen === q.answer;
+  results.push({ q, chosen, isCorrect });
+
+  const rat = document.getElementById('ratBox');
+  let html = `<div class="rat-tag">Rationalization</div>`;
+  html += `<div><strong>Correct answer: ${letters[q.answer]}) ${q.choices[q.answer]}</strong></div>`;
+  html += `<div style="margin-top:0.6rem">${q.rat}</div>`;
+  if (q.tip) html += `<div class="nmat-tip"><div class="nmat-tip-label">NMAT Tip</div>${q.tip}</div>`;
+  rat.innerHTML = html;
+  rat.style.display = 'block';
+
+  const nb = document.getElementById('nextBtn');
+  nb.style.display = 'block';
+  nb.textContent = current < QUESTIONS.length - 1 ? 'Next question →' : 'See results →';
+}
+
+function nextQuestion() {
+  current++;
+  if (current >= QUESTIONS.length) { showResults(); return; }
+  loadQuestion();
+}
+
+function showResults() {
+  show('screenResults');
+  const correct = results.filter(r => r.isCorrect).length;
+  const total = results.length;
+  const pct = Math.round(correct/total*100);
+  const avgTime = Math.round(timeTaken.reduce((a,b)=>a+b,0)/timeTaken.length);
+
+  document.getElementById('scoreBig').textContent = pct + '%';
+  document.getElementById('scoreLabel').textContent = `${correct} of ${total} correct`;
+  document.getElementById('statCorrect').textContent = correct;
+  document.getElementById('statWrong').textContent = total - correct;
+  document.getElementById('statTime').textContent = avgTime + 's';
+
+  const list = document.getElementById('reviewList');
+  list.innerHTML = '';
+  const letters = ['a','b','c','d'];
+  results.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.className = 'review-item ' + (r.isCorrect ? 'correct-item' : 'wrong-item');
+    const qShort = r.q.question.replace(/<[^>]+>/g,'').substring(0,85) + '…';
+    let ansHtml = '';
+    if (!r.isCorrect) {
+      const yourAns = r.chosen !== null ? `${letters[r.chosen]}) ${r.q.choices[r.chosen]}` : 'No answer (timed out)';
+      ansHtml = `<span class="bad">${yourAns}</span> → <span class="right">${letters[r.q.answer]}) ${r.q.choices[r.q.answer]}</span>`;
+    } else {
+      ansHtml = `<span class="right">${letters[r.q.answer]}) ${r.q.choices[r.q.answer]}</span>`;
+    }
+    div.innerHTML = `<div class="review-q">${i+1}. ${qShort}</div><div class="review-ans">${ansHtml}</div>`;
+    list.appendChild(div);
+  });
+}
+
+function goSetup() { show('screenSetup'); }
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function fmt(s) {
+  return '0:' + (s < 10 ? '0' : '') + Math.max(s,0);
+}
+</script>
+</body>
+</html>
